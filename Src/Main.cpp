@@ -4,7 +4,7 @@
 
 int main(int argc, char* argv[])
 { 
-    // Parse command line arguments
+    // Parse command line arguments 
     const Command_Line_Args args(argc, argv);
 
     // Initialize the process execution
@@ -14,7 +14,7 @@ int main(int argc, char* argv[])
     const Bucket_Partitioned_MDS::CVRP cvrp(args.input());
 
     // Create Bucket-Partitioned-MDS solver
-    const Bucket_Partitioned_MDS::Solver solver(args.get_alpha(), args.get_lambda(), args.get_rho());
+    const Bucket_Partitioned_MDS::Solver solver(args.get_alpha(), args.get_rho());
 
     // Solve CVRP using Bucket-Partitioned-MDS solver
     Bucket_Partitioned_MDS::Solution cvrp_solution = solver.solve(cvrp);

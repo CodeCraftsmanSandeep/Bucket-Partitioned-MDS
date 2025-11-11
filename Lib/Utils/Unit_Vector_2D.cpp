@@ -96,6 +96,7 @@ bool Unit_Vector_2D::operator==(
     return (std::fabs(this->x - other.x) < EPS) && (std::fabs(this->y - other.y) < EPS);
 }
 
+
 bool Unit_Vector_2D::is_in_between(
     const Unit_Vector_2D& vec1, 
     const Unit_Vector_2D& vec2) const 

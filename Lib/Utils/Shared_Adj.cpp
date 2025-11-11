@@ -1,8 +1,8 @@
 #include "Utils.h"
 
 Shared_Adj::Shared_Adj(
-    const size_t cvrp_size, 
-    const size_t num_buckets,
+    const int cvrp_size, 
+    const int num_buckets,
     const node_t depot) : cvrp_size(cvrp_size), num_buckets(num_buckets), depot(depot)
 {
     /*
@@ -16,7 +16,7 @@ Shared_Adj::Shared_Adj(
 }
 
 void Shared_Adj::add_edge(
-    const size_t bucket_index, 
+    const int bucket_index, 
     const node_t u, 
     const node_t v
 )
@@ -34,13 +34,13 @@ void Shared_Adj::add_edge(
 }
 
 const std::vector <node_t>& Shared_Adj::get_depot_neighbours(
-    const size_t bucket_id) const 
+    const int bucket_id) const 
 {
     return this->depot_neighbours[bucket_id];
 }
 
 const std::vector <node_t>& Shared_Adj::get_customer_neighbours(
-    const size_t vertex) const 
+    const int vertex) const 
 {
     return this->shared_adj_list[vertex];
 }

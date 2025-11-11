@@ -1,6 +1,6 @@
 CXX = g++
 CXXFLAGS = -O3 -std=c++17 -IInclude
-OMPFLAGS = -O3 -march=native -flto -std=c++17 -fopenmp -IInclude -static-libstdc++ -static-libgcc
+OMPFLAGS = -O3 -march=native -flto -std=c++17 -fopenmp -IInclude  -static-libstdc++
 
 SRC = Src/Main.cpp $(shell find Lib -name '*.cpp')
 TARGET = Bin/bucket-partitioned-MDS

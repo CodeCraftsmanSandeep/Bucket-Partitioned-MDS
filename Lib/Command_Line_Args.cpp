@@ -18,22 +18,21 @@ std::string Command_Line_Args::get_usage()
 
     usage << "Allowed arguments:\n"
           << "  --alpha   : Angle to partition the 2-D plane\n"
-          << "  --lambda  : Number of random MST's for exploration\n"
           << "  --rho     : Number of different DFS orderings for exploitation\n"
           << "  --input   : Input file path\n"
           << " --output   : Output file path\n\n"
 
           << "Mandatory arguments:\n"
-          << "  alpha, lambda, rho\n\n"
+          << "  alpha and rho\n\n"
 
           << "Optional arguments:\n"
-          << "  input, output\n\n"
+          << "  input and output\n\n"
 
           << "Acceptable usage examples:\n"
-          << "  ./executable --alpha=<alpha> --lambda=<lambda> --rho=<rho>\n"
-          << "  ./executable --alpha=<alpha> --lambda=<lambda> --rho=<rho> --output=<output>\n"
-          << "  ./executable --alpha=<alpha> --lambda=<lambda> --rho=<rho> --input=<input>\n"
-          << "  ./executable --alpha=<alpha> --lambda=<lambda> --rho=<rho> --input=<input> --output=<output>\n";
+          << "  ./executable --alpha=<alpha> --rho=<rho>\n"
+          << "  ./executable --alpha=<alpha> --rho=<rho> --output=<output>\n"
+          << "  ./executable --alpha=<alpha> --rho=<rho> --input=<input>\n"
+          << "  ./executable --alpha=<alpha> --rho=<rho> --input=<input> --output=<output>\n";
 
     return usage.str();
 }
@@ -71,43 +70,6 @@ void Command_Line_Args::set_alpha(int argc, char** argv)
     if(!alpha_passed)
     {
         HANDLE_ERROR("Alpha is not passed\n" + this->get_usage(), true);
-    }
-
-    return;
-}
-
-void Command_Line_Args::set_lambda(int argc, char** argv) 
-{
-    /* 
-    * set_lambda: Helper function to get lambda from command line arguments and store it in data attribute
-    * @param argc: Number of command-line arguments 
-    * @param argv: Array of command-line arguments
-    * @return: Returns nothing
-    */
-
-    bool lambda_passed = false;
-
-    for(int i = 1; i < argc; i++)
-    {
-        std::string arg = argv[i];
-        if (arg.rfind("--lambda=", 0) == 0) 
-        {
-            if (lambda_passed)
-            {
-                HANDLE_ERROR("Lambda must be passed exactly once in command line arguments\n" + this->get_usage(), true);
-            }
-            lambda_passed = true;
-            this->lambda = std::stoi(arg.substr(9));
-            if (this->lambda <= 0)
-            {
-                HANDLE_ERROR("Lambda must be positive", true);
-            }
-        } 
-    }
-
-    if(!lambda_passed)
-    {
-        HANDLE_ERROR("Lambda is not passed\n" + this->get_usage(), true);
     }
 
     return;
@@ -235,7 +197,6 @@ Command_Line_Args::Command_Line_Args(int argc, char** argv)
 
     // Parsing mandatory function parameters 
     this->set_alpha(argc, argv);
-    this->set_lambda(argc, argv);
     this->set_rho(argc, argv);
 
     // Parsing optional function parameters
@@ -268,15 +229,6 @@ double Command_Line_Args::get_alpha() const
     */
 
     return alpha; 
-}
-
-int Command_Line_Args::get_lambda() const 
-{ 
-    /*
-    * get_lambda: Function to get lambda value
-    */
-
-    return lambda; 
 }
 
 int Command_Line_Args::get_rho() const 

@@ -33,31 +33,31 @@ namespace Bucket_Partitioned_MDS
         * @return: Returns true if the above verification steps are satisfied else false
         */
 
-        std::vector <int> appear_count(cvrp.get_size(), 0);
+        std::vector <int> appear_count(cvrp.size(), 0);
         distance_t computed_cost = 0;
         for(const auto& route: routes)
         {
-            distance_t curr_route_cost = cvrp.get_distance(cvrp.get_depot(), route[0]);
+            distance_t curr_route_cost = cvrp.distance(cvrp.depot(), route[0]);
             demand_t route_demand = 0;
-            for(size_t j = 1; j < route.size(); ++j)
+            for(int j = 1; j < route.size(); ++j)
             {
-                curr_route_cost += cvrp.get_distance(route[j - 1], route[j]);
+                curr_route_cost += cvrp.distance(route[j - 1], route[j]);
                 route_demand += cvrp[route[j-1]].demand;
                 appear_count[route[j-1]]++;
             }
-            curr_route_cost += cvrp.get_distance(route.back(), cvrp.get_depot());
+            curr_route_cost += cvrp.distance(route.back(), cvrp.depot());
             route_demand += cvrp[route.back()].demand;
             appear_count[route.back()]++;
 
             computed_cost += curr_route_cost;
-            if(route_demand > cvrp.get_capacity())
+            if(route_demand > cvrp.capacity())
             {
                 HANDLE_ERROR("Vehicle constriant is voilated in the routes", false);
                 return false;
             }
         }
 
-        for(node_t customer = 1; customer < cvrp.get_size(); customer++)
+        for(node_t customer = 1; customer < cvrp.size(); customer++)
         {
             if(appear_count[customer] != 1) 
             {

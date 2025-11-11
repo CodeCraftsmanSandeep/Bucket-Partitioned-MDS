@@ -8,7 +8,7 @@
 #include <iostream>
 
 namespace Bucket_Partitioned_MDS
-{
+{ 
     class CVRP
     {
         /*
@@ -16,16 +16,16 @@ namespace Bucket_Partitioned_MDS
         */
         
     private: 
-        capacity_t capacity;
-        size_t size;
+        capacity_t _capacity;
+        int _size;
         std::vector <Point> node;
         std::string type;
-        const node_t depot = 0; // depot is always 0
+        const node_t _depot = 0; // depot is always 0
 
     public:
         CVRP(
             std::istream&);
-        distance_t get_distance(
+        distance_t distance(
             const node_t, 
             const node_t) const;
         const Point& operator[](
@@ -33,9 +33,9 @@ namespace Bucket_Partitioned_MDS
         void print(
             std::ostream&) const;
         // Getters
-        capacity_t get_capacity() const;
-        size_t get_size() const;
-        node_t get_depot() const;
+        capacity_t capacity() const;
+        int size() const;
+        node_t depot() const;
     };
 
     class Solution 
@@ -66,22 +66,18 @@ namespace Bucket_Partitioned_MDS
 
     private:
         const double alpha;
-        const int lambda;
         const int rho;
 
         void get_bucket(
-            const CVRP& cvrp, 
-            const double start_angle, 
-            const double end_angle, 
-            std::vector <node_t>& bucket, 
-            std::vector <node_t>& reverse_map) const;
-
+            const CVRP&, 
+            const double, 
+            const double, 
+            std::vector <node_t>&) const;
 
         void construct_random_mst(
-            const CVRP& cvrp,
-            const std::vector <node_t>& bucket,
-            std::vector <node_t>& depot_neighbours, 
-            std::vector <std::vector <node_t>>& adj) const;
+            const CVRP&, 
+            const std::vector <node_t>&, 
+            std::vector <std::vector <node_t>>&) const; 
 
         distance_t get_route_distance(
             const CVRP&, 
@@ -101,7 +97,7 @@ namespace Bucket_Partitioned_MDS
             const CVRP&, 
             std::vector <node_t>&,
             std::vector <node_t>&, 
-            size_t) const;
+            int) const;
         
         std::vector<std::vector<node_t>> process_2OPT(
             const CVRP&,
@@ -113,22 +109,24 @@ namespace Bucket_Partitioned_MDS
             distance_t&) const;
 
         void get_routes(
-            const CVRP& cvrp, 
-            const std::vector <node_t>& depot_neighbours, 
-            const std::vector <std::vector <node_t>>& mst_adj,
-            std::vector <std::vector <node_t>>& routes, 
-            distance_t& cost, 
-            const std::vector <node_t>& reverse_map, 
-            const int num_nodes) const;
+            const CVRP&, 
+            const std::vector <std::vector <node_t>>&, 
+            const std::vector <node_t>&, 
+            std::vector <std::vector <node_t>>&, 
+            distance_t&) const;
 
     public:
         Solver(
             const double, 
-            const int, 
             const int);
 
         Solution solve(
             const CVRP&) const;
+
+        void create_buckets(
+            const CVRP& cvrp, 
+            std::vector <int>& reverse_map,
+            std::vector <std::vector <node_t>>& buckets) const;
     };
 }
 

@@ -19,8 +19,8 @@ using angle_t     = double;
 
 // Useful things for error handling
 extern std::ostream& ERROR_FILE;
-void handle_error(const std::string, const char*, int, std::ostream& out, const bool);
-#define HANDLE_ERROR(msg, exit_flag) handle_error((msg), __FILE__, __LINE__, ERROR_FILE, exit_flag)
+void handle_error(const char*, int, std::ostream& out, const std::string, const bool);
+#define HANDLE_ERROR(msg, exit_flag) handle_error(__FILE__, __LINE__, ERROR_FILE, msg, exit_flag)
 
 class Point
 {
@@ -59,7 +59,7 @@ public:
     Min_Heap_Node*    vec;
     node_t*  vertex_to_index_map;
 
-    Min_Heap(const size_t);
+    Min_Heap(const int);
     void DecreaseKey(const Min_Heap_Node&);
     Min_Heap_Node pop();
     bool empty();
@@ -97,6 +97,20 @@ public:
         const Unit_Vector_2D&) const;
     void print(
         std::ostream&) const;
+    Unit_Vector_2D(cord_t x1, cord_t y1, cord_t x2, cord_t y2) 
+    {
+        x = x2 - x1;
+        y = y2 - y1;
+
+        auto norm = get_norm(x, y);
+        x /= norm;
+        y /= norm;
+    }
+    Unit_Vector_2D() 
+    {
+        x = 0;
+        y = 0;
+    }
 };
 
 class Shared_Adj 
@@ -109,30 +123,30 @@ class Shared_Adj
     *             sequence of operations.
     */
 
-    const size_t num_buckets;
-    const size_t cvrp_size;
+    const int num_buckets;
+    const int cvrp_size;
     const node_t depot;
 public:
     std::vector <std::vector <node_t>> depot_neighbours;
     std::vector <std::vector <node_t>> shared_adj_list; 
 
     Shared_Adj(
-        const size_t, 
-        const size_t, 
+        const int, 
+        const int, 
         const node_t
     );
 
     void add_edge(
-        const size_t, 
+        const int, 
         const node_t, 
         const node_t
     );
 
     const std::vector <node_t>& get_depot_neighbours(
-        const size_t) const;
+        const int) const;
 
     const std::vector <node_t>& get_customer_neighbours(
-        const size_t) const;
+        const int) const;
 };
 
 #endif

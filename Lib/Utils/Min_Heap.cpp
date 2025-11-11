@@ -8,7 +8,7 @@ void Min_Heap::swap_nodes(Min_Heap_Node& left, Min_Heap_Node& right)
     right = storage;
 }
 
-Min_Heap::Min_Heap(const size_t num_nodes)
+Min_Heap::Min_Heap(const int num_nodes)
 {
     this->last_index = num_nodes - 1;
     this->vec = new Min_Heap_Node[num_nodes];

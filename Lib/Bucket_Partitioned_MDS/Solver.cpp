@@ -8,12 +8,57 @@
 
 namespace Bucket_Partitioned_MDS
 {
-    void Solver::get_bucket(
+    void Solver::create_buckets(
         const CVRP& cvrp, 
-        const double start_angle, 
-        const double end_angle, 
-        std::vector <node_t>& bucket, 
-        std::vector <node_t>& reverse_map) const
+        std::vector <int>& reverse_map,
+        std::vector <std::vector <node_t>>& buckets) const 
+    {
+        size_t N = cvrp.size();
+        const node_t depot = cvrp.depot();
+
+        // Diving 2-D plane into ceil of 360/alpha partitions
+        int num_partitions = std::ceil(360.00 / alpha);
+
+        std::vector<Unit_Vector_2D> seperating_vectors(num_partitions + 1);
+        Unit_Vector_2D xaxis(1, 0); 
+        seperating_vectors[0] = seperating_vectors[num_partitions] = xaxis;
+        for(int i = 1; i < num_partitions; i++)
+        {
+            // Create a vector by rotating x-axis by i * alpha degrees
+            seperating_vectors[i] = Unit_Vector_2D(xaxis, i * alpha);
+        }
+
+        // Depot goes into all buckets
+        node_t u = depot;
+        for(int i = 0; i < num_partitions; i++)
+        {
+            buckets[i].push_back(u); 
+        }
+
+        // Assigning bucket to each vertex
+        for(u = 1; u < N; u++)
+        {
+            Unit_Vector_2D vec(cvrp[depot], cvrp[u]);
+            for(int i = 0; i < num_partitions; i++)
+            {
+                if(vec.is_in_between(seperating_vectors[i], seperating_vectors[i + 1]))
+                {
+                    // Pushing node u in the bucket i
+                    buckets[i].push_back(u);
+                    reverse_map[u] = buckets[i].size() - 1;
+                    break;
+                }
+            }
+        }
+
+        return;
+    }
+
+    void Solver::get_bucket(
+        const CVRP&             cvrp, 
+        const double            start_angle, 
+        const double            end_angle, 
+        std::vector <node_t>&   bucket) const
     {
         /*
         * get_bucket: Stores all the customers present in [start_angle, end_angle) region in bucket along with depot 
@@ -24,8 +69,8 @@ namespace Bucket_Partitioned_MDS
         */
 
         // Get size and depot of CVRP
-        const size_t N = cvrp.get_size();
-        const node_t depot = cvrp.get_depot();
+        const int N = cvrp.size();
+        const node_t depot = cvrp.depot();
 
         // Depot is present in every bucket
         bucket.push_back(depot); 
@@ -36,14 +81,12 @@ namespace Bucket_Partitioned_MDS
         Unit_Vector_2D end_vector(xaxis, end_angle); // rotating xaxis by end_angle in anti clock wise direction
 
         // Pushing all customers in [start_angle, end_angle) region into bucket
-        int index = 1;
         for(node_t u = 1; u < N; u++)  
         {
             Unit_Vector_2D vec(cvrp[depot], cvrp[u]); // creating vector depot->u 
             if(vec.is_in_between(start_vector, end_vector)) // check if vec is in [stat_vector, end_vector) region
             {
                 bucket.push_back(u); // push into bucket if present 
-                reverse_map[u] = index++;
             }
         }
 
@@ -51,9 +94,8 @@ namespace Bucket_Partitioned_MDS
     }
 
     void Solver::construct_random_mst(
-        const CVRP& cvrp,
-        const std::vector <node_t>& bucket,
-        std::vector <node_t>& depot_neighbours, 
+        const CVRP&                         cvrp,
+        const std::vector <node_t>&         bucket,
         std::vector <std::vector <node_t>>& adj) const
     {
         /*
@@ -75,12 +117,11 @@ namespace Bucket_Partitioned_MDS
         node_t u_index = depot_index;             
         min_heap.DecreaseKey(Min_Heap_Node(-1, depot_index, 0));    
         Min_Heap_Node min_node = min_heap.pop(); 
-        int completed = 1; 
         node_t v;
         node_t v_index;
         for(v_index = 1; v_index < num_nodes; v_index++) 
         {
-            min_heap.DecreaseKey(Min_Heap_Node(u_index, v_index, cvrp.get_distance(bucket[u_index], bucket[v_index]))); 
+            min_heap.DecreaseKey(Min_Heap_Node(u_index, v_index, cvrp.distance(bucket[u_index], bucket[v_index]))); 
         }
 
         // Adding edges to MST 
@@ -91,39 +132,26 @@ namespace Bucket_Partitioned_MDS
             u_index = min_node.u; // Index of the node in the bucket
             v_index = min_node.v; // Index of the neighbour of bucket[u_index]
 
+            // Add the edge to the graph (v_index is added to MST)
+            adj[u_index].push_back(v_index);                                
+            adj[v_index].push_back(u_index);       
+
             // Get the corresponding vertex in entire CVRP space                                      
-            u = bucket[u_index];
-            v = bucket[v_index];
-
-            // Add the edge to the graph
-            if(u == 0) depot_neighbours.push_back(v);
-            else adj[u].push_back(v);
-
-            if(v == 0) depot_neighbours.push_back(u);
-            else adj[v].push_back(u);
-
-            // v_index is added to MST
-            completed++;                     
+            v = bucket[v_index];                                                       
 
             // Loop over all neighbours of v_index 
             for(node_t w_index = 0; w_index < num_nodes; w_index++) 
             {
                 node_t w = bucket[w_index];
-                min_heap.DecreaseKey(Min_Heap_Node(v_index, w_index, cvrp.get_distance(v, w)));
+                min_heap.DecreaseKey(Min_Heap_Node(v_index, w_index, cvrp.distance(v, w)));
             }
-        }
-
-        // Checking whether all bucket nodes are added in MST (or) not
-        if(completed != num_nodes) 
-        {
-            HANDLE_ERROR("Not all nodes are included in the MST! Completed: " + std::to_string(completed) + ", Expected: " + std::to_string(num_nodes), true);
         }
 
         return;
     }
 
     distance_t Solver::get_route_distance(
-        const CVRP& cvrp,
+        const CVRP&                 cvrp,
         const std::vector <node_t>& route) const
     {
         /*
@@ -133,24 +161,24 @@ namespace Bucket_Partitioned_MDS
         * @return: Returns distance a vehicle need to travel to cover the route
         */
 
-        node_t prev_node = cvrp.get_depot();
+        node_t prev_node = cvrp.depot();
         distance_t cost = 0;
 
-        for(auto& node: route) 
+        for(auto& node: route)
         {
-            cost += cvrp.get_distance(prev_node, node);
+            cost += cvrp.distance(prev_node, node);
             prev_node = node;
         }
-        cost += cvrp.get_distance(prev_node, cvrp.get_depot());
+        cost += cvrp.distance(prev_node, cvrp.depot());
 
         return cost;
     }
 
     void Solver::tsp_approx(
-        const CVRP& cvrp, 
-        std::vector<node_t>& cities, 
-        std::vector<node_t>& tour, 
-        node_t ncities) const 
+        const CVRP&             cvrp, 
+        std::vector<node_t>&    cities, 
+        std::vector<node_t>&    tour, 
+        node_t                  ncities) const 
     {
         /*
         * tsp_approx: Travelling Salesman Problem (TSP) approximation
@@ -206,30 +234,30 @@ namespace Bucket_Partitioned_MDS
     }
 
     std::vector<std::vector<node_t>> Solver::process_tsp_approx(
-        const CVRP &cvrp, 
-        const std::vector<std::vector<node_t>> &solRoutes) const 
+        const CVRP&                             cvrp, 
+        const std::vector<std::vector<node_t>>& solRoutes) const 
     {
         std::vector<std::vector<node_t>> modifiedRoutes;
-        size_t nroutes = solRoutes.size();
+        int nroutes = solRoutes.size();
 
-        for (size_t i = 0; i < nroutes; ++i) 
+        for (int i = 0; i < nroutes; ++i) 
         {
             // Processing solRoutes[i]
-            size_t sz = solRoutes[i].size();
+            int sz = solRoutes[i].size();
             std::vector<node_t> cities(sz + 1);
             std::vector<node_t> tour(sz + 1);
 
-            for (size_t j = 0; j < sz; ++j)
+            for (int j = 0; j < sz; ++j)
             {
                 cities[j] = solRoutes[i][j];
             }
 
             cities[sz] = 0;  // the last node is the depot.
-            this->tsp_approx(cvrp, cities, tour, sz + 1);
+            tsp_approx(cvrp, cities, tour, sz + 1);
 
             // the first element of the tour is now the depot. So, ignore tour[0] and insert the rest into the vector.
             std::vector<node_t> curr_route;
-            for (size_t kk = 1; kk < sz + 1; ++kk) 
+            for (int kk = 1; kk < sz + 1; ++kk) 
             {
                 curr_route.push_back(tour[kk]);
             }
@@ -240,10 +268,10 @@ namespace Bucket_Partitioned_MDS
     }
 
     void Solver::tsp_2opt(
-        const CVRP& cvrp, 
-        std::vector <node_t>& cities, 
-        std::vector <node_t>& tour, 
-        size_t ncities) const
+        const CVRP&             cvrp, 
+        std::vector <node_t>&   cities, 
+        std::vector <node_t>&   tour, 
+        int                  ncities) const
     {
         /* 
         * tsp_2opt: Finds the 2opt solution, repeats until optimization is found
@@ -253,57 +281,56 @@ namespace Bucket_Partitioned_MDS
         * @return: Returns nothing
         */
 
-        size_t improve = 0;
+        int improve = 0;
 
         while (improve < 2) 
         {
-            double best_distance = 0.0;
-            best_distance += cvrp.get_distance(cvrp.get_depot(), cities[0]);  
+            double best_distance = cvrp.distance(cvrp.depot(), cities[0]);  
 
-            for (size_t jj = 1; jj < ncities; ++jj) 
+            for (int jj = 1; jj < ncities; ++jj) 
             {
-                best_distance += cvrp.get_distance(cities[jj - 1], cities[jj]);
+                best_distance   += cvrp.distance(cities[jj - 1], cities[jj]);
             }
 
-            best_distance += cvrp.get_distance(cvrp.get_depot(), cities[ncities - 1]);
+            best_distance       += cvrp.distance(cvrp.depot(), cities[ncities - 1]);
             // 1x 2x 3x 4 5
             //  1 2  3  4 5
-            for (size_t i = 0; i < ncities - 1; i++) 
+            for (int i = 0; i < ncities - 1; i++) 
             {
-                for (size_t k = i + 1; k < ncities; k++) 
+                for (int k = i + 1; k < ncities; k++) 
                 {
-                    for (size_t c = 0; c < i; ++c) 
+                    for (int c = 0; c < i; ++c) 
                     {
                         tour[c] = cities[c];
                     }
 
-                    size_t dec = 0;
-                    for (size_t c = i; c < k + 1; ++c) 
+                    int dec  = 0;
+                    for (int c = i; c < k + 1; ++c) 
                     {
                         tour[c] = cities[k - dec];
                         dec++;
                     }
-                    for (size_t c = k + 1; c < ncities; ++c) 
+                    for (int c = k + 1; c < ncities; ++c) 
                     {
                         tour[c] = cities[c];
                     }
 
-                    double new_distance = cvrp.get_distance(cvrp.get_depot(), tour[0]);
-                    for (size_t jj = 1; jj < ncities; ++jj) 
+                    double new_distance = cvrp.distance(cvrp.depot(), tour[0]);
+                    for (int jj = 1; jj < ncities; ++jj) 
                     {
-                        new_distance += cvrp.get_distance(tour[jj - 1], tour[jj]);
+                        new_distance    += cvrp.distance(tour[jj - 1], tour[jj]);
                     }
-                    new_distance += cvrp.get_distance(cvrp.get_depot(), tour[ncities - 1]);
+                    new_distance        += cvrp.distance(cvrp.depot(), tour[ncities - 1]);
 
                     if (new_distance < best_distance) 
                     {
                         // Improvement found so reset
                         improve = 0;
-                        for (size_t jj = 0; jj < ncities; jj++)
+                        for (int jj = 0; jj < ncities; jj++)
                         {
-                            cities[jj] = tour[jj];
+                            cities[jj]  = tour[jj];
                         }
-                        best_distance = new_distance;
+                        best_distance   = new_distance;
                     }
                 }
             }
@@ -314,7 +341,7 @@ namespace Bucket_Partitioned_MDS
     }
 
     std::vector<std::vector<node_t>> Solver::process_2OPT(
-        const CVRP& cvrp, 
+        const CVRP&                             cvrp, 
         const std::vector<std::vector<node_t>>& routes) const
     {
         /*
@@ -325,11 +352,11 @@ namespace Bucket_Partitioned_MDS
         */
 
         std::vector<std::vector<node_t>> processed_routes;
-        size_t nroutes = routes.size();
+        int nroutes = routes.size();
 
-        for (size_t i = 0; i < nroutes; ++i) 
+        for (int i = 0; i < nroutes; ++i) 
         {
-            size_t sz = routes[i].size();
+            int sz = routes[i].size();
             std::vector<node_t> cities = routes[i];
             std::vector<node_t> tour(sz);
             std::vector<node_t> curr_route;
@@ -337,10 +364,10 @@ namespace Bucket_Partitioned_MDS
             // For sz <= 1, the cost of the path cannot change. So not running tsp_2opt
             if (sz > 2)
             {
-                this->tsp_2opt(cvrp, cities, tour, sz);
+                tsp_2opt(cvrp, cities, tour, sz);
             }                         
             
-            for (size_t kk = 0; kk < sz; ++kk) 
+            for (int kk = 0; kk < sz; ++kk) 
             {
                 curr_route.push_back(cities[kk]);
             }
@@ -364,31 +391,31 @@ namespace Bucket_Partitioned_MDS
         * @return: Returns nothing
         */
 
-        auto processed_routes1 = process_tsp_approx(cvrp, routes);
-        processed_routes1 = process_2OPT(cvrp, processed_routes1);
-        auto processed_routes2 = process_2OPT(cvrp, routes);
+        auto processed_routes1  = process_tsp_approx(cvrp, routes);
+        processed_routes1       = process_2OPT(cvrp, processed_routes1);
+        auto processed_routes2  = process_2OPT(cvrp, routes);
 
         double min_cost = 0;
         for(int i = 0; i < routes.size(); i++)
         {
             // Choose as minimum cost route as possible
-            auto route_cost = get_route_distance(cvrp, routes[i]);
-            auto route_cost1 = get_route_distance(cvrp, processed_routes1[i]);
-            auto route_cost2 = get_route_distance(cvrp, processed_routes2[i]); 
+            auto route_cost     = get_route_distance(cvrp, routes[i]);
+            auto route_cost1    = get_route_distance(cvrp, processed_routes1[i]);
+            auto route_cost2    = get_route_distance(cvrp, processed_routes2[i]); 
 
-            if(std::min(route_cost, route_cost1) > route_cost2)
+            if(std::min(route_cost1, route_cost2) >= route_cost)
             {
-                routes[i] = processed_routes2[i];
-                min_cost += route_cost2;
+                min_cost        += route_cost;
             }
-            else if(std::min(route_cost, route_cost2) > route_cost1)
+            else if(std::min(route_cost1, route_cost) >= route_cost2)
             {
-                routes[i] = processed_routes1[i];
-                min_cost += route_cost1;
+                routes[i]       = processed_routes2[i];
+                min_cost        += route_cost2;
             }
             else
             {
-                min_cost += route_cost;
+                routes[i]       = processed_routes1[i];
+                min_cost        += route_cost1;   
             }
         }
 
@@ -396,28 +423,29 @@ namespace Bucket_Partitioned_MDS
 
         return;
     }
-    
+
     void Solver::get_routes(
-        const CVRP& cvrp, 
-        const std::vector <node_t>& depot_neighbours, 
-        const std::vector <std::vector <node_t>>& mst_adj,
-        std::vector <std::vector <node_t>>& routes, 
-        distance_t& cost, 
-        const std::vector <node_t>& reverse_map, 
-        const int num_nodes) const
+        const CVRP&                                 cvrp, 
+        const std::vector <std::vector <node_t>>&   mst_adj, 
+        const std::vector <node_t>&                 bucket, 
+        std::vector <std::vector <node_t>>&         routes, 
+        distance_t&                                 cost) const
     {
         /*
         * get_routes: Helper function to construct randomized routes from MST
         * @param cvrp: CVRP instance
         * @param mst_adj: Adjacency list of MST 
+        * @param bucket: Nodes in the bucket
         * @param routes: Routes constructed from random DFS order of MST
-        * @param cost: Total cost of the routes constructed
+        * @param const: Total cost of the routes constructed
         * @return: Returns nothing
         */
 
-        // Helping variables & storage      
-        const node_t depot = 0;
-        const node_t depot_index = 0;
+        // Helping variables & storage
+        const int num_nodes = bucket.size();
+        if(num_nodes == 1) return;          
+        const node_t depot          = cvrp.depot();
+        const node_t depot_index    = 0; // index of depot in the bucket
         std::vector <bool> visited(num_nodes, false);
 
         // Random engine
@@ -426,36 +454,34 @@ namespace Bucket_Partitioned_MDS
 
         // Data structures for route which is under construction
         std::vector <node_t> curr_route;
-        distance_t curr_route_cost = 0.0;
 
-        // Stack data structure for DFS (rec = recursive stack)
-        std::stack <std::pair <size_t, node_t*>> rec;
+        // Stack data structure for DFS
+        std::stack <std::pair <int, node_t*>> rec;
 
         // Starting DFS with depot
-        node_t v = depot;
-        node_t v_index = depot_index;
-        visited[v_index] = true;
-        int covered = 1;
-        size_t neigh_size = depot_neighbours.size();
-        node_t* neigh = new node_t[neigh_size];
-        std::copy(depot_neighbours.begin(), depot_neighbours.end(), neigh);
+        node_t v                    = depot;
+        node_t v_index              = depot_index;
+        visited[v_index]            = true;                    
+        int neigh_size              = mst_adj[v_index].size();
+        node_t* neigh               = new node_t[neigh_size];
+        std::copy(mst_adj[v_index].begin(), mst_adj[v_index].end(), neigh);
         std::shuffle(neigh, neigh + neigh_size, rng);
         rec.push({neigh_size - 1, neigh});
         int index;
-        node_t prev_node = v;
-        capacity_t residue_capacity = cvrp.get_capacity();
+        node_t prev_node            = v;
+        capacity_t residue_capacity = cvrp.capacity();
 
         // DFS iterative
         while(!rec.empty()) 
         {
-            index = rec.top().first;
+            index = rec.top().first; 
             neigh = rec.top().second;
-            
+
             while(index >= 0) 
             {
-                v = neigh[index];
-                v_index = reverse_map[v];
-
+                v_index = neigh[index];
+                v       = bucket[v_index];
+                
                 if(!visited[v_index]) 
                 {
                     visited[v_index] = true;
@@ -463,46 +489,41 @@ namespace Bucket_Partitioned_MDS
                     {
                         // Push vertex v into current route
                         curr_route.push_back(v);
-                        curr_route_cost += cvrp.get_distance(prev_node, v);
-                        residue_capacity -= cvrp[v].demand;
-                        prev_node = v;                    
+                        cost                += cvrp.distance(prev_node, v);
+                        residue_capacity    -= cvrp[v].demand;
+                        prev_node           = v;                    
                     } 
                     else 
                     {
                         // End the current route
-                        covered += curr_route.size(); 
                         routes.push_back(std::move(curr_route));
-                        curr_route_cost += cvrp.get_distance(prev_node, depot); 
-                        cost += curr_route_cost;
-                        curr_route.clear();
-                        prev_node = depot; 
-                        curr_route_cost = 0.0; 
-                        residue_capacity = cvrp.get_capacity(); 
+                        cost                += cvrp.distance(prev_node, depot); 
+                        prev_node           = depot; 
+                        residue_capacity    = cvrp.capacity(); 
                 
                         // Start a new route
                         curr_route.push_back(v);
-                        residue_capacity -= cvrp[v].demand;
-                        curr_route_cost += cvrp.get_distance(prev_node, v);
-                        prev_node = v; 
+                        residue_capacity    -= cvrp[v].demand;
+                        cost                += cvrp.distance(prev_node, v);
+                        prev_node           = v; 
                     }
 
                     // Pushing vertex v into stack for DFS
                     rec.top().first = index - 1; 
-                    const std::vector <node_t>& vertex_neighbours = mst_adj[v];
-                    neigh_size = vertex_neighbours.size();
-                    neigh = new node_t[neigh_size];
-                    std::copy(vertex_neighbours.begin(), vertex_neighbours.end(), neigh);
+                    neigh_size      = mst_adj[v_index].size();
+                    neigh           = new node_t[neigh_size];
+                    std::copy(mst_adj[v_index].begin(), mst_adj[v_index].end(), neigh);
                     std::shuffle(neigh, neigh + neigh_size, rng);
                     rec.push({neigh_size - 1, neigh});
                     break;
                 }
                 index--;
-            } 
+            }
 
             if(index < 0) 
             {
                 // Every neighbour of vertex is visited
-                delete[] neigh;
+                free(rec.top().second);
                 rec.pop();
             }
         }
@@ -510,30 +531,21 @@ namespace Bucket_Partitioned_MDS
         // Pushing remaining nodes in route into list of routes
         if(!curr_route.empty()) 
         { 
-            covered += curr_route.size(); 
             routes.push_back(std::move(curr_route));
-            curr_route_cost += cvrp.get_distance(prev_node, depot); 
-            cost += curr_route_cost; 
+            cost += cvrp.distance(prev_node, depot); 
         }
 
-        // // Making sure that every node in bucket is pushed into route
-        // if(covered != num_nodes)
-        // {
-        //     HANDLE_ERROR("Not all nodes in bucket are pushed into routes", true);
-        // }
         return;
     }
 
     Solver::Solver(
         const double _alpha, 
-        const int _lambda, 
         const int _rho) 
-        : alpha(_alpha), lambda(_lambda), rho(_rho) 
+        : alpha(_alpha), rho(_rho) 
     {
         /*
         * Solver: Constructor for setting all paramters to run Bucket Paritioned MDS algo
         * @param _alpha: Alpha value
-        * @param _lambda: Lambda value
         * @param _rho: Rho value
         */
 
@@ -544,82 +556,87 @@ namespace Bucket_Partitioned_MDS
         const CVRP& cvrp) const
     {
         /*
-        * solve: Function to solve CVRP with Bucket Partitioned MDS algo using paramters alpha, lambda and rho
+        * solve: Function to solve CVRP with Bucket Partitioned MDS algo using paramters alpha and rho
         * @param cvrp: CVRP to solve
         * @return: Solution after solving the CVRP problem using Bucket Partitioned MDS 
         */
 
         // Start execution timer
         auto start = std::chrono::high_resolution_clock::now();
+        double total_execution_time = 0;
 
         // Data structures for storing solution
-        distance_t final_cost = 0.0;
+        distance_t final_cost   = 0.0;
         std::vector <std::vector<int>> final_routes;
 
         // Useful values for solving
-        const size_t N = cvrp.get_size();
-        const node_t depot = cvrp.get_depot();
-        const int num_buckets = std::ceil(360.00 / this->alpha);
+        const int num_buckets = std::ceil(360.00 / alpha); 
+        std::vector <node_t> reverse_map(cvrp.size());
+        std::vector <std::vector<node_t>> buckets(num_buckets);
+        create_buckets(cvrp, reverse_map, buckets);
 
-        // Thread-safe shared adj list for Bucket-Partitioned-MDS steps
-        std::vector <std::vector <node_t>> mst_adj(N);
-        std::vector <node_t> reverse_map(N, 0);
-
-        // Partitioning the CVRP space
+        // Paritioning the problem for exploitation
         #pragma omp parallel for 
-        for(int bucket_id = 0; bucket_id < num_buckets; bucket_id++) 
+        for(int b = 1; b <= num_buckets; b++) 
         {
-            // Finding the vertices in this partition
-            const angle_t start_angle = (bucket_id) * this->alpha;
-            const angle_t end_angle = std::min(360.00, (bucket_id + 1) * this->alpha);
-            std::vector <node_t> bucket;
-            get_bucket(cvrp, start_angle, end_angle, bucket, reverse_map);
+            const std::vector <node_t>& bucket = buckets[b-1];
 
-            // Useful data structures for exploration & exploitaion
+            // Useful data structures for exploitation
+            const int bucket_size    = bucket.size();
             std::vector <std::vector <node_t>> low_cost_routes;
-            distance_t low_cost = INT_MAX;
+            distance_t low_cost      = INT_MAX;
 
             // Get MST
-            std::vector <node_t> depot_neighbours;
-            this->construct_random_mst(cvrp, bucket, depot_neighbours, mst_adj);
+            std::vector <std::vector <node_t>> mst_adj(bucket_size);
+            construct_random_mst(cvrp, bucket, mst_adj);
 
             // Exploitation: getting different routes from different DFS orders of MST
-            #pragma omp parallel for
+            #pragma omp parallel for 
             for(int _ = 1; _ <= rho; _++)
             {
                 // Finding random DFS order of the MST
                 std::vector <std::vector <node_t>> routes;
                 distance_t cost = 0.0;
-                this->get_routes(cvrp, depot_neighbours, mst_adj, routes, cost, reverse_map, bucket.size());
+                get_routes(cvrp, mst_adj, bucket, routes, cost);
 
                 #pragma omp critical 
-                {
-                    // Updating the cost if lower cost is found
+                { 
+                    // Updating the cost if lower cost routes are found
                     if(low_cost > cost) 
                     {
                         low_cost_routes = routes;
-                        low_cost = cost;
+                        low_cost        = cost;
                     }
                 }
             }
 
             if(!low_cost_routes.empty())
             {
-                this->process_routes(cvrp, low_cost_routes, low_cost);   
+                process_routes(cvrp, low_cost_routes, low_cost);   
                 #pragma omp critical 
                 {
-                    for(auto& route: low_cost_routes)
-                    {
-                        final_routes.push_back(std::move(route));
-                    }
+                    for(auto& route: low_cost_routes) 
+                    { 
+                        final_routes.push_back(std::move(route)); 
+                    } 
                     final_cost += low_cost;
                 }
             }
         }
-        
-        auto end = std::chrono::high_resolution_clock::now();
-        double elapsed_time = std::chrono::duration<double>(end - start).count();
-
-        return Solution(elapsed_time, final_cost, final_routes);
+        {
+            auto end            = std::chrono::high_resolution_clock::now();
+            double elapsed_time = std::chrono::duration<double>(end - start).count();
+            std::cout << "loop time: " << elapsed_time << "\n";
+            total_execution_time += elapsed_time;
+            start = end;
+        }
+        // // process_routes(cvrp, final_routes, final_cost);   
+        // {
+        //     auto end            = std::chrono::high_resolution_clock::now();
+        //     double elapsed_time = std::chrono::duration<double>(end - start).count();
+        //     std::cout << "Pre process time: " << elapsed_time << "\n";
+        //     total_execution_time += elapsed_time;
+            return Solution(total_execution_time, final_cost, final_routes);
+        // }
     }
 }

@@ -13,7 +13,7 @@ namespace Bucket_Partitioned_MDS
         /* 
         * CVRP: Constructor for CVRP class which reads and stores CVRP
         */
-
+ 
         std::string line;
         
         // Ignoring first 3 lines
@@ -24,7 +24,7 @@ namespace Bucket_Partitioned_MDS
 
         // Dimension
         getline(input, line);
-        size = stof(line.substr(line.find(":") + 2));
+        _size = stof(line.substr(line.find(":") + 2));
 
         // Distance type
         getline(input, line);
@@ -32,20 +32,20 @@ namespace Bucket_Partitioned_MDS
 
         // Capacity
         getline(input, line);
-        capacity = stof(line.substr(line.find(":") + 2));
+        _capacity = stof(line.substr(line.find(":") + 2));
 
         // Ignoring "NORD_COORD_SECTION" line
         getline(input, line);
 
         // Allocate nodes
-        node.resize(size);
+        node.resize(_size);
 
         // Parsing node co-ordinates
-        for (size_t i = 0; i < size; ++i) {
+        for (int i = 0; i < _size; ++i) {
             getline(input, line);
 
             std::stringstream iss(line);
-            size_t id;
+            int id;
             std::string xStr, yStr;
 
             iss >> id >> xStr >> yStr;
@@ -57,11 +57,11 @@ namespace Bucket_Partitioned_MDS
         getline(input, line);
 
         // Parsing demands
-        for (size_t i = 0; i < size; ++i) {
+        for (int i = 0; i < _size; ++i) {
             getline(input, line);
             std::stringstream iss(line);
 
-            size_t id;
+            int id;
             std::string dStr;
             iss >> id >> dStr;
 
@@ -69,25 +69,25 @@ namespace Bucket_Partitioned_MDS
         }
     }
     
-    distance_t CVRP::get_distance(
+    distance_t CVRP::distance(
         const node_t u, 
         const node_t v) const
     {
         /*
-        * get_distance: Function to get distance between two nodes
+        * distance: Function to get distance between two nodes
         * @param u: Node u
         * @param v: Node v
         * @return: Distance between u and v
         */
 
-        if (u < 0 || u >= this->size)
+        if (u < 0 || u >= _size)
         {
-            HANDLE_ERROR("Index out of bounds: " + std::to_string(u) + " must be >= 0 and < " + std::to_string(this->size), true);
+            HANDLE_ERROR("Index out of bounds: " + std::to_string(u) + " must be >= 0 and < " + std::to_string(_size), true);
         }
 
-        if (v < 0 || v >= this->size)
+        if (v < 0 || v >= _size)
         {
-            HANDLE_ERROR("Index out of bounds: " + std::to_string(v) + " must be >= 0 and < " + std::to_string(this->size), true);
+            HANDLE_ERROR("Index out of bounds: " + std::to_string(v) + " must be >= 0 and < " + std::to_string(_size), true);
         }
 
         if (u == v) 
@@ -108,9 +108,9 @@ namespace Bucket_Partitioned_MDS
         * @param index: Index of the node to access
         */
 
-        if (index < 0 || index >= this->size)
+        if (index < 0 || index >= _size)
         {
-            HANDLE_ERROR("Index out of bounds: " + std::to_string(index) + " must be >= 0 and < " + std::to_string(this->size), true);
+            HANDLE_ERROR("Index out of bounds: " + std::to_string(index) + " must be >= 0 and < " + std::to_string(_size), true);
         }
         return this->node[index]; 
     }
@@ -124,14 +124,14 @@ namespace Bucket_Partitioned_MDS
         * @return: Returns nothing
         */
 
-        output << "SIZE: " << size << "\n";
-        output << "Capacity: " << capacity << "\n";
+        output << "SIZE: " << _size << "\n";
+        output << "Capacity: " << _capacity << "\n";
         output << std::setw(6) << "NODE" 
                 << std::setw(10) << "X"  
                 << std::setw(10) << "Y" 
                 << std::setw(10) << "DEMAND" << "\n";
 
-        for (size_t i = 0; i < size; ++i) 
+        for (int i = 0; i < _size; ++i) 
         {
             output << std::setw(6) << i
                     << std::setw(10) << node[i].x 
@@ -143,33 +143,33 @@ namespace Bucket_Partitioned_MDS
         return;
     }
 
-    capacity_t CVRP::get_capacity() const 
+    capacity_t CVRP::capacity() const 
     {
         /*
-        * get_capacity: Getter function to return capacity
+        * capacity: Getter function to return capacity
         * @return: Returns capacity of the vehicle
         */
 
-        return this->capacity;
+        return _capacity;
     }
 
-    size_t CVRP::get_size() const 
+    int CVRP::size() const 
     {
         /*
-        * get_size: Getter function to return size
+        * size: Getter function to return size
         * @return: Returns size of the CVRP
         */
 
-        return this->size;
+        return _size;
     }
 
-    node_t CVRP::get_depot() const 
+    node_t CVRP::depot() const 
     {
         /*
-        * get_depot: Getter function to return depot
+        * depot: Getter function to return depot
         * @return: Returns the depot 
         */
 
-        return this->depot;
+        return _depot;
     }
 }

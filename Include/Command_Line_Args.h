@@ -21,13 +21,11 @@ private:
     std::istream* input_stream; // points to either file or std::cin
     std::ostream* output_stream; // points to either file or std::cout
     double alpha; // in degrees
-    int lambda;
     int rho;
  
     void set_input_stream(int, char**);
     void set_output_stream(int, char**);
     void set_alpha(int, char**);
-    void set_lambda(int, char**);
     void set_rho(int, char**);
     std::string get_usage();
 public:
@@ -37,7 +35,6 @@ public:
     std::ostream& output() const;
     // Getters
     double get_alpha() const;
-    int get_lambda() const; 
     int get_rho() const;
 };
 

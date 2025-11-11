@@ -10,42 +10,37 @@ namespace Bucket_Partitioned_MDS
 {
     void Solver::create_buckets(
         const CVRP& cvrp, 
-        std::vector <int>& reverse_map,
         std::vector <std::vector <node_t>>& buckets) const 
     {
-        size_t N = cvrp.size();
-        const node_t depot = cvrp.depot();
-
-        // Diving 2-D plane into ceil of 360/alpha partitions
-        int num_partitions = std::ceil(360.00 / alpha);
-
-        std::vector<Unit_Vector_2D> seperating_vectors(num_partitions + 1);
+        const int num_buckets = buckets.size();
+        std::vector<Unit_Vector_2D> seperating_vectors(num_buckets + 1);
         Unit_Vector_2D xaxis(1, 0); 
-        seperating_vectors[0] = seperating_vectors[num_partitions] = xaxis;
-        for(int i = 1; i < num_partitions; i++)
+        seperating_vectors[0] = seperating_vectors[num_buckets] = xaxis;
+        for(int i = 1; i < num_buckets; i++)
         {
             // Create a vector by rotating x-axis by i * alpha degrees
             seperating_vectors[i] = Unit_Vector_2D(xaxis, i * alpha);
         }
 
         // Depot goes into all buckets
+        auto depot = cvrp.depot();
         node_t u = depot;
-        for(int i = 0; i < num_partitions; i++)
+        for(int i = 0; i < num_buckets; i++)
         {
             buckets[i].push_back(u); 
         }
 
         // Assigning bucket to each vertex
+        const int N = cvrp.size();
         for(u = 1; u < N; u++)
         {
             Unit_Vector_2D vec(cvrp[depot], cvrp[u]);
-            for(int i = 0; i < num_partitions; i++)
+            for(int i = 0; i < num_buckets; i++)
             {
                 if(vec.is_in_between(seperating_vectors[i], seperating_vectors[i + 1]))
                 {
                     // Pushing node u in the bucket i
                     buckets[i].push_back(u);
-                    reverse_map[u] = buckets[i].size() - 1;
                     break;
                 }
             }
@@ -563,7 +558,6 @@ namespace Bucket_Partitioned_MDS
 
         // Start execution timer
         auto start = std::chrono::high_resolution_clock::now();
-        double total_execution_time = 0;
 
         // Data structures for storing solution
         distance_t final_cost   = 0.0;
@@ -571,28 +565,26 @@ namespace Bucket_Partitioned_MDS
 
         // Useful values for solving
         const int num_buckets = std::ceil(360.00 / alpha); 
-        std::vector <node_t> reverse_map(cvrp.size());
         std::vector <std::vector<node_t>> buckets(num_buckets);
-        create_buckets(cvrp, reverse_map, buckets);
+        create_buckets(cvrp, buckets);
 
         // Paritioning the problem for exploitation
         #pragma omp parallel for 
-        for(int b = 1; b <= num_buckets; b++) 
+        for(int bucket_id = 0; bucket_id < num_buckets; bucket_id++) 
         {
-            const std::vector <node_t>& bucket = buckets[b-1];
+            const std::vector <node_t>& bucket = buckets[bucket_id];
 
             // Useful data structures for exploitation
-            const int bucket_size    = bucket.size();
             std::vector <std::vector <node_t>> low_cost_routes;
-            distance_t low_cost      = INT_MAX;
+            distance_t low_cost      = DBL_MAX;
 
             // Get MST
-            std::vector <std::vector <node_t>> mst_adj(bucket_size);
+            std::vector <std::vector <node_t>> mst_adj(bucket.size());
             construct_random_mst(cvrp, bucket, mst_adj);
 
             // Exploitation: getting different routes from different DFS orders of MST
             #pragma omp parallel for 
-            for(int _ = 1; _ <= rho; _++)
+            for(int _ = 0; _ < rho; _++)
             {
                 // Finding random DFS order of the MST
                 std::vector <std::vector <node_t>> routes;
@@ -623,20 +615,11 @@ namespace Bucket_Partitioned_MDS
                 }
             }
         }
-        {
-            auto end            = std::chrono::high_resolution_clock::now();
-            double elapsed_time = std::chrono::duration<double>(end - start).count();
-            std::cout << "loop time: " << elapsed_time << "\n";
-            total_execution_time += elapsed_time;
-            start = end;
-        }
-        // // process_routes(cvrp, final_routes, final_cost);   
-        // {
-        //     auto end            = std::chrono::high_resolution_clock::now();
-        //     double elapsed_time = std::chrono::duration<double>(end - start).count();
-        //     std::cout << "Pre process time: " << elapsed_time << "\n";
-        //     total_execution_time += elapsed_time;
-            return Solution(total_execution_time, final_cost, final_routes);
-        // }
+
+        // Finding execution time 
+        auto end                    = std::chrono::high_resolution_clock::now();
+        double total_execution_time = std::chrono::duration<double>(end - start).count();
+
+        return Solution(total_execution_time, final_cost, final_routes);
     }
 }

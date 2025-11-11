@@ -124,9 +124,8 @@ namespace Bucket_Partitioned_MDS
             const CVRP&) const;
 
         void create_buckets(
-            const CVRP& cvrp, 
-            std::vector <int>& reverse_map,
-            std::vector <std::vector <node_t>>& buckets) const;
+            const CVRP&,
+            std::vector <std::vector <node_t>>&) const;
     };
 }
 

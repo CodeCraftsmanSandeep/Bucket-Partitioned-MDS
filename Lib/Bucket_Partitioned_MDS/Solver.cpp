@@ -13,6 +13,18 @@ namespace Bucket_Partitioned_MDS
         std::vector <std::vector <node_t>>& buckets) const 
     {
         const int num_buckets = buckets.size();
+        const int N = cvrp.size();
+        if(num_buckets == 1)
+        {
+            // Push all the vertices into one bucket
+            buckets[0].reserve(N);
+            for(node_t u = 0; u < N; u++)
+            {
+                buckets[0].push_back(u);
+            }
+            return;
+        }
+
         std::vector<Unit_Vector_2D> seperating_vectors(num_buckets + 1);
         Unit_Vector_2D xaxis(1, 0); 
         seperating_vectors[0] = seperating_vectors[num_buckets] = xaxis;
@@ -31,7 +43,6 @@ namespace Bucket_Partitioned_MDS
         }
 
         // Assigning bucket to each vertex
-        const int N = cvrp.size();
         for(u = 1; u < N; u++)
         {
             Unit_Vector_2D vec(cvrp[depot], cvrp[u]);
@@ -88,13 +99,13 @@ namespace Bucket_Partitioned_MDS
         return;
     }
 
-    void Solver::construct_random_mst(
+    void Solver::construct_mst(
         const CVRP&                         cvrp,
         const std::vector <node_t>&         bucket,
         std::vector <std::vector <node_t>>& adj) const
     {
         /*
-        * construct_random_mst: Helper function to construct random MST on the nodes in bucket
+        * construct_mst: Helper function to construct random MST on the nodes in bucket
         * @param cvrp: CVRP instance which is currently considered to solve
         * @param bucket: Nodes in bucket on which MST is to be constructed
         * @param adj: Adjacency list of MST
@@ -173,7 +184,7 @@ namespace Bucket_Partitioned_MDS
         const CVRP&             cvrp, 
         std::vector<node_t>&    cities, 
         std::vector<node_t>&    tour, 
-        node_t                  ncities) const 
+        const int               ncities) const 
     {
         /*
         * tsp_approx: Travelling Salesman Problem (TSP) approximation
@@ -188,12 +199,9 @@ namespace Bucket_Partitioned_MDS
         node_t ClosePt = 0;
         distance_t CloseDist;
 
-        for (i = 1; i < ncities; i++)
-        {
-            tour[i] = cities[i - 1];
-        }
-        
-        tour[0] = cities[ncities - 1];
+        std::copy(cities.begin(), cities.end() - 1, tour.begin() + 1);
+        tour[0] = cities.back();
+
 
         for (i = 1; i < ncities; i++) 
         {
@@ -230,46 +238,41 @@ namespace Bucket_Partitioned_MDS
 
     std::vector<std::vector<node_t>> Solver::process_tsp_approx(
         const CVRP&                             cvrp, 
-        const std::vector<std::vector<node_t>>& solRoutes) const 
+        const std::vector<std::vector<node_t>>& sol_routes) const 
     {
         std::vector<std::vector<node_t>> modifiedRoutes;
-        int nroutes = solRoutes.size();
+        const int num_routes = sol_routes.size();
+        modifiedRoutes.reserve(sol_routes.size());
 
-        for (int i = 0; i < nroutes; ++i) 
+        for(int i = 0; i < num_routes; i++)
         {
             // Processing solRoutes[i]
-            int sz = solRoutes[i].size();
-            std::vector<node_t> cities(sz + 1);
+            int sz = sol_routes[i].size();
+            std::vector<node_t> cities = sol_routes[i];
+            cities.push_back(cvrp.depot()); 
             std::vector<node_t> tour(sz + 1);
-
-            for (int j = 0; j < sz; ++j)
-            {
-                cities[j] = solRoutes[i][j];
-            }
-
-            cities[sz] = 0;  // the last node is the depot.
             tsp_approx(cvrp, cities, tour, sz + 1);
 
             // the first element of the tour is now the depot. So, ignore tour[0] and insert the rest into the vector.
-            std::vector<node_t> curr_route;
+            // modifiedRoutes.emplace_back(tour.begin() + 1, tour.begin() + 1 + sz);
+            std::vector<node_t> curr_route; 
             for (int kk = 1; kk < sz + 1; ++kk) 
-            {
-                curr_route.push_back(tour[kk]);
-            }
-
+            { 
+                curr_route.push_back(tour[kk]); 
+            } 
             modifiedRoutes.push_back(curr_route);
         }
         return modifiedRoutes;
     }
 
-    void Solver::tsp_2opt(
+    void Solver::tsp_2OPT(
         const CVRP&             cvrp, 
         std::vector <node_t>&   cities, 
         std::vector <node_t>&   tour, 
-        int                  ncities) const
+        int                     ncities) const
     {
         /* 
-        * tsp_2opt: Finds the 2opt solution, repeats until optimization is found
+        * tsp_2OPT: Finds the 2opt solution, repeats until optimization is found
         * @param cities: Contains the orginal solution, it is updated during the course of the 2opt-scheme to contain the 2opt solution
         * @param tour: Auxilary array for the function
         * @param ncities: Number of cities
@@ -359,7 +362,7 @@ namespace Bucket_Partitioned_MDS
             // For sz <= 1, the cost of the path cannot change. So not running tsp_2opt
             if (sz > 2)
             {
-                tsp_2opt(cvrp, cities, tour, sz);
+                tsp_2OPT(cvrp, cities, tour, sz);
             }                         
             
             for (int kk = 0; kk < sz; ++kk) 
@@ -555,6 +558,7 @@ namespace Bucket_Partitioned_MDS
         * @param cvrp: CVRP to solve
         * @return: Solution after solving the CVRP problem using Bucket Partitioned MDS 
         */
+        double maxMB_before_execution = get_peak_mb();
 
         // Start execution timer
         auto start = std::chrono::high_resolution_clock::now();
@@ -566,7 +570,7 @@ namespace Bucket_Partitioned_MDS
         // Useful values for solving
         const int num_buckets = std::ceil(360.00 / alpha); 
         std::vector <std::vector<node_t>> buckets(num_buckets);
-        create_buckets(cvrp, buckets);
+        create_buckets(cvrp, buckets); 
 
         // Paritioning the problem for exploitation
         #pragma omp parallel for 
@@ -580,7 +584,7 @@ namespace Bucket_Partitioned_MDS
 
             // Get MST
             std::vector <std::vector <node_t>> mst_adj(bucket.size());
-            construct_random_mst(cvrp, bucket, mst_adj);
+            construct_mst(cvrp, bucket, mst_adj);
 
             // Exploitation: getting different routes from different DFS orders of MST
             #pragma omp parallel for 
@@ -616,10 +620,12 @@ namespace Bucket_Partitioned_MDS
             }
         }
 
-        // Finding execution time 
         auto end                    = std::chrono::high_resolution_clock::now();
-        double total_execution_time = std::chrono::duration<double>(end - start).count();
+        double maxMB_after_execution = get_peak_mb();
 
-        return Solution(total_execution_time, final_cost, final_routes);
+        double execution_time = std::chrono::duration<double>(end - start).count();
+        double maxMB_difference = maxMB_after_execution - maxMB_before_execution;
+
+        return Solution(execution_time, maxMB_difference, final_cost, final_routes);
     }
 }

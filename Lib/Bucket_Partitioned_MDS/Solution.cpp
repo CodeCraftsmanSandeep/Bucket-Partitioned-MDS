@@ -6,6 +6,7 @@ namespace Bucket_Partitioned_MDS
 {
     Solution::Solution(
         const double _time_for_solving, 
+        const double _maxMB_difference, 
         const double _cost, 
         const std::vector <std::vector <node_t>>& _routes) 
     {
@@ -17,6 +18,7 @@ namespace Bucket_Partitioned_MDS
         */
 
         time_for_solving = _time_for_solving;
+        maxMB_difference = _maxMB_difference;
         cost = _cost;
         routes = _routes;
     }
@@ -84,6 +86,7 @@ namespace Bucket_Partitioned_MDS
         */
         
         output << "Execution time for solving (sec): " << this->time_for_solving << "\n";
+        output << "Maximum memory difference during solving (MB): " << this->maxMB_difference << "\n";
         output << "Cost: " << this->cost << "\n";
 
         for(int i = 0; i < this->routes.size(); i++)

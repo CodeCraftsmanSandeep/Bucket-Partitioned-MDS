@@ -177,7 +177,7 @@ void Command_Line_Args::set_output_stream(int argc, char** argv)
                 std::filesystem::create_directories(out_path.parent_path());
             }
             
-            output_file_owner = std::make_unique<std::ofstream>(out_path, std::ios::app);
+            output_file_owner = std::make_unique<std::ofstream>(out_path, std::ios::trunc);
             if (!output_file_owner->is_open()) 
             {
                 HANDLE_ERROR("Cannot open output file: " + filename, true);

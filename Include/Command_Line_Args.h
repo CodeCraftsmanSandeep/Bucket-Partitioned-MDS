@@ -21,7 +21,7 @@ private:
     std::istream* input_stream; // points to either file or std::cin
     std::ostream* output_stream; // points to either file or std::cout
     double alpha; // in degrees
-    int rho;
+    int rho; 
  
     void set_input_stream(int, char**);
     void set_output_stream(int, char**);

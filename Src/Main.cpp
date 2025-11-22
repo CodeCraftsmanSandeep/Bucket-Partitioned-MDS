@@ -1,5 +1,5 @@
 #include "Command_Line_Args.h"
-#include "Initializer.h"
+#include "Initializer.h" 
 #include "Bucket_Partitioned_MDS.h"
 
 int main(int argc, char* argv[])
@@ -7,7 +7,7 @@ int main(int argc, char* argv[])
     // Parse command line arguments 
     const Command_Line_Args args(argc, argv);
 
-    // Initialize the process execution
+    // Initialize the process execution 
     initialize(args);
 
     // Create CVRP object
@@ -21,7 +21,7 @@ int main(int argc, char* argv[])
 
     // Verify the solution
     cvrp_solution.verify(cvrp);
-
+ 
     // Print the solution
     cvrp_solution.print(args.output());
 

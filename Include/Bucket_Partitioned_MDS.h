@@ -42,6 +42,7 @@ namespace Bucket_Partitioned_MDS
     {
     private:
         double time_for_solving;
+        double maxMB_difference;
         double cost;
         std::vector <std::vector <node_t>> routes;
 
@@ -49,6 +50,7 @@ namespace Bucket_Partitioned_MDS
             const CVRP& cvrp);
     public:
         Solution(
+            const double, 
             const double, 
             const double,
             const std::vector <std::vector <node_t>>&);
@@ -74,7 +76,7 @@ namespace Bucket_Partitioned_MDS
             const double, 
             std::vector <node_t>&) const;
 
-        void construct_random_mst(
+        void construct_mst(
             const CVRP&, 
             const std::vector <node_t>&, 
             std::vector <std::vector <node_t>>&) const; 
@@ -93,7 +95,7 @@ namespace Bucket_Partitioned_MDS
             const CVRP&, 
             const std::vector<std::vector<node_t>>&) const;
 
-        void tsp_2opt(
+        void tsp_2OPT(
             const CVRP&, 
             std::vector <node_t>&,
             std::vector <node_t>&, 

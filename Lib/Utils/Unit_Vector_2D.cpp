@@ -125,10 +125,20 @@ bool Unit_Vector_2D::is_in_between(
     }
 
     // Compute cross products
-    cord_t cross1p = vec1.x * this->y - vec1.y * this->x; // vec1 × vecp (vecp is `this` vector)
-    cord_t crossp2 = this->x * vec2.y - this->y * vec2.x; // vecp × vec2 (vecp is `this` vector)
+    cord_t cross12 = vec1.x * vec2.y - vec1.y * vec2.x;     // vec1 × vec2
+    cord_t cross1p = vec1.x * this->y - vec1.y * this->x;   // vec1 × vecp (vecp is `this` vector)
+    cord_t crossp2 = this->x * vec2.y - this->y * vec2.x;   // vecp × vec2 (vecp is `this` vector)
 
-    return cross1p >= 0 && crossp2 >= 0;
+    if(cross12 >= 0) 
+    {
+        // Angle between 1 and 2 is <= 180 degress CCW
+        return cross1p >= 0 && crossp2 >= 0;
+    }
+    else
+    {
+        // Angle between 1 and 2 is > 180 degrees CCW
+        return !(cross1p < 0 && crossp2 < 0);
+    }
 }
 
 void Unit_Vector_2D::print(

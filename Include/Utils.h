@@ -5,6 +5,7 @@
 #include <string>
 #include <vector>
 
+
 // Useful constants
 constexpr double PI = 3.14159265358979323846;
 const double EPS = 1e-3;  // small tolerance for floating-point comparison
@@ -113,40 +114,6 @@ public:
     }
 };
 
-class Shared_Adj 
-{
-    /*
-    * Shared_Adj: Shared adjacency list for MST's of all buckets 
-    *             in Bucket-Partitioned-MDS which supports thread safe read 
-    *             and write to data structures. 
-    *             This data structure is thread safe for Bucket-Partitioned-MDS 
-    *             sequence of operations.
-    */
-
-    const int num_buckets;
-    const int cvrp_size;
-    const node_t depot;
-public:
-    std::vector <std::vector <node_t>> depot_neighbours;
-    std::vector <std::vector <node_t>> shared_adj_list; 
-
-    Shared_Adj(
-        const int, 
-        const int, 
-        const node_t
-    );
-
-    void add_edge(
-        const int, 
-        const node_t, 
-        const node_t
-    );
-
-    const std::vector <node_t>& get_depot_neighbours(
-        const int) const;
-
-    const std::vector <node_t>& get_customer_neighbours(
-        const int) const;
-};
+double get_peak_mb();
 
 #endif
